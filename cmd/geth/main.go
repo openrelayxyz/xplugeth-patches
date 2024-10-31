@@ -54,6 +54,10 @@ const (
 var (
 	// flags that configure the node
 	nodeFlags = flags.Merge([]cli.Flag{
+		//begin xplugeth injection
+		utils.DisablePluginsFlag,
+		utils.PluginsConfigDirFlag,
+		//end xplugeth injection
 		utils.IdentityFlag,
 		utils.UnlockedAccountFlag,
 		utils.PasswordFileFlag,
@@ -338,6 +342,10 @@ func prepare(ctx *cli.Context) {
 // It creates a default node based on the command line arguments and runs it in
 // blocking mode, waiting for it to be shut down.
 func geth(ctx *cli.Context) error {
+	//begin xplugeth injection
+	pluginInitialize(ctx)
+	//end xplugeth injection
+
 	if args := ctx.Args().Slice(); len(args) > 0 {
 		return fmt.Errorf("invalid command: %q", args[0])
 	}
@@ -346,7 +354,19 @@ func geth(ctx *cli.Context) error {
 	stack := makeFullNode(ctx)
 	defer stack.Close()
 
+	//begin xplugeth injection
+	pluginRegisterStack(stack)
+	stack.RegisterAPIs(pluginGetAPIs())
+	//end xplugeth injection
+
 	startNode(ctx, stack, false)
+
+	//begin xplugeth injection
+	pluginInitializeNode()
+	pluginBlockchain()
+	defer pluginOnShutdown()
+	//end xplugeth injection
+
 	stack.Wait()
 	return nil
 }

@@ -192,6 +192,10 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 	}
 
 	backend, eth := utils.RegisterEthService(stack, &cfg.Eth)
+	
+	//begin xplugeth injection
+	pluginRegisterBackend(backend, eth)
+	//end xplugeth injection
 
 	// Create gauge with geth system and build information
 	if eth != nil { // The 'eth' backend may be nil in light mode
