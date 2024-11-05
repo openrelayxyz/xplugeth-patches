@@ -264,6 +264,9 @@ func (f *Freezer) ModifyAncients(fn func(ethdb.AncientWriteOp) error) (writeSize
 	if err != nil {
 		return 0, err
 	}
+	//begin xplugeth injection
+	pluginCommitUpdate(item)
+	//end xplugeth injection
 	f.frozen.Store(item)
 	return writeSize, nil
 }
