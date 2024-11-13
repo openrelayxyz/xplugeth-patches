@@ -1183,6 +1183,9 @@ func (s *StateDB) Commit(block uint64, deleteEmptyObjects bool) (common.Hash, er
 	if err != nil {
 		return common.Hash{}, err
 	}
+	//begin xplugeth injection
+	codeUpdates := make(map[common.Hash][]byte)
+	//end xplugeth injection
 	// Handle all state updates afterwards
 	for addr := range s.stateObjectsDirty {
 		obj := s.stateObjects[addr]
@@ -1192,6 +1195,9 @@ func (s *StateDB) Commit(block uint64, deleteEmptyObjects bool) (common.Hash, er
 		// Write any contract code associated with the state object
 		if obj.code != nil && obj.dirtyCode {
 			rawdb.WriteCode(codeWriter, common.BytesToHash(obj.CodeHash()), obj.code)
+			//begin xplugeth injection
+			codeUpdates[common.BytesToHash(obj.CodeHash())] = obj.code
+			//end xplugeth injection
 			obj.dirtyCode = false
 		}
 		// Write any storage changes in the state object to its storage trie
@@ -1251,6 +1257,9 @@ func (s *StateDB) Commit(block uint64, deleteEmptyObjects bool) (common.Hash, er
 		start := time.Now()
 		// Only update if there's a state transition (skip empty Clique blocks)
 		if parent := s.snap.Root(); parent != root {
+			//begin xplugeth injection
+			pluginStateUpdate(root, parent, s.convertAccountSet(s.stateObjectsDestruct), s.accounts, s.storages, codeUpdates)
+			//end xplugeth injection
 			if err := s.snaps.Update(root, parent, s.convertAccountSet(s.stateObjectsDestruct), s.accounts, s.storages); err != nil {
 				log.Warn("Failed to update snapshot tree", "from", parent, "to", root, "err", err)
 			}
