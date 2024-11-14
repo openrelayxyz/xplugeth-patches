@@ -41,6 +41,11 @@ import (
 	"github.com/ethereum/go-ethereum/node"
 	"go.uber.org/automaxprocs/maxprocs"
 
+	//begin xplugeth injection
+	"path/filepath"
+	"github.com/openrelayxyz/xplugeth"
+	//end xplugeth injection
+
 	// Force-load the tracer engines to trigger registration
 	_ "github.com/ethereum/go-ethereum/eth/tracers/js"
 	_ "github.com/ethereum/go-ethereum/eth/tracers/native"
@@ -56,6 +61,10 @@ const (
 var (
 	// flags that configure the node
 	nodeFlags = flags.Merge([]cli.Flag{
+		//begin xplugeth injection
+		utils.DisablePluginsFlag,
+		utils.PluginsConfigDirFlag,
+		//end xplugeth injection
 		utils.IdentityFlag,
 		utils.UnlockedAccountFlag,
 		utils.PasswordFileFlag,
@@ -395,6 +404,18 @@ func prepare(ctx *cli.Context) {
 // It creates a default node based on the command line arguments and runs it in
 // blocking mode, waiting for it to be shut down.
 func geth(ctx *cli.Context) error {
+	//begin xplugeth injection
+	if !ctx.IsSet(utils.DisablePluginsFlag.Name) {
+		var pluginsConfigDir string
+		if ctx.IsSet(utils.PluginsConfigDirFlag.Name) {
+			pluginsConfigDir = ctx.String(utils.PluginsConfigDirFlag.Name)
+		} else {
+			pluginsConfigDir = filepath.Join(ctx.String(utils.DataDirFlag.Name), "pluginsconfig")
+		}
+		xplugeth.Initialize(pluginsConfigDir)
+		log.Info("xplugeth initialized")
+	}
+	//end xplugeth injection
 	if args := ctx.Args().Slice(); len(args) > 0 {
 		return fmt.Errorf("invalid command: %q", args[0])
 	}
@@ -403,7 +424,19 @@ func geth(ctx *cli.Context) error {
 	stack, backend := makeFullNode(ctx)
 	defer stack.Close()
 
+	//begin xplugeth injection
+	xplugeth.StoreSingleton[*node.Node](stack)
+	stack.RegisterAPIs(pluginGetAPIs())
+	//end xplugeth injection
+	
 	startNode(ctx, stack, backend, false)
+	
+	//begin xplugeth injection
+	pluginInitializeNode()
+	pluginBlockchain()
+	defer pluginOnShutdown()
+	//end xplugeth injection
+
 	stack.Wait()
 	return nil
 }
