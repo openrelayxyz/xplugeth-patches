@@ -90,6 +90,19 @@ import (
 
 var (
 	// General settings
+	//begin xplugeth injection
+	DisablePluginsFlag = &cli.BoolFlag{
+		Name:     "disable.plugins",
+		Usage:    "disables imported plugins",
+		Category: flags.EthCategory,
+	}
+	PluginsConfigDirFlag = &flags.DirectoryFlag{
+		Name:     "plugins.config.dir",
+		Usage:    "Directory for plugin config files",
+		Value:    flags.DirectoryString(filepath.Join("<datadir>", "pluginsconfig")),
+		Category: flags.EthCategory,
+	}
+	//end xplugeth injection
 	DataDirFlag = &flags.DirectoryFlag{
 		Name:     "datadir",
 		Usage:    "Data directory for the databases and keystore",
