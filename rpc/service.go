@@ -67,6 +67,10 @@ func (r *serviceRegistry) registerName(name string, rcvr interface{}) error {
 		return fmt.Errorf("service %T doesn't have any suitable methods/subscriptions to expose", rcvr)
 	}
 
+	//begin xplugeth code injection
+	pluginExtendedCallbacks(callbacks, rcvrVal)
+	//end xplugeth code injection
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.services == nil {
