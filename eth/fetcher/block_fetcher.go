@@ -515,6 +515,9 @@ func (f *BlockFetcher) loop() {
 							select {
 							case res := <-resCh:
 								res.Done <- nil
+								//begin xplugeth injection
+								pluginPeerEval(peer, *res.Res.(*eth.BlockHeadersRequest))
+								//end xplugeth injection
 								f.FilterHeaders(peer, *res.Res.(*eth.BlockHeadersRequest), time.Now(), announcedAt)
 
 							case <-timeout.C:
