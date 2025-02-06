@@ -1449,6 +1449,10 @@ func (bc *BlockChain) writeKnownBlock(block *types.Block) error {
 // writeBlockWithState writes block, metadata and corresponding state data to the
 // database.
 func (bc *BlockChain) writeBlockWithState(block *types.Block, receipts []*types.Receipt, statedb *state.StateDB) error {
+	//begin xplugeth injection
+	var interval time.Duration
+	_ = pluginSetTrieFlushIntervalClone(interval) // this is being called here to engage a testing scenario
+	//end xplugeth injection	
 	if !bc.HasHeader(block.ParentHash(), block.NumberU64()-1) {
 		return consensus.ErrUnknownAncestor
 	}
@@ -1498,6 +1502,11 @@ func (bc *BlockChain) writeBlockWithState(block *types.Block, receipts []*types.
 	chosen := current - state.TriesInMemory
 	flushInterval := time.Duration(bc.flushInterval.Load())
 	// If we exceeded time allowance, flush an entire trie to disk
+
+	//begin xplugeth code injection
+	flushInterval = pluginSetTrieFlushIntervalClone(flushInterval)
+	//end xplugeth code injection
+
 	if bc.gcproc > flushInterval {
 		// If the header is missing (canonical chain behind), we're reorging a low
 		// diff sidechain. Suspend committing until this operation is completed.
@@ -1542,7 +1551,6 @@ func (bc *BlockChain) writeBlockAndSetHead(block *types.Block, receipts []*types
 			return NonStatTy, err
 		}
 	}
-
 	// Set new head.
 	bc.writeHeadBlock(block)
 
@@ -1555,6 +1563,9 @@ func (bc *BlockChain) writeBlockAndSetHead(block *types.Block, receipts []*types
 	// canonical blocks. Avoid firing too many ChainHeadEvents,
 	// we will fire an accumulated ChainHeadEvent and disable fire
 	// event here.
+	//begin xplugeth code injection
+	pluginNewHead(block, block.Hash(), logs)
+	//end xplugeth code injection
 	if emitHeadEvent {
 		bc.chainHeadFeed.Send(ChainHeadEvent{Header: block.Header()})
 	}
@@ -2218,6 +2229,9 @@ func (bc *BlockChain) reorg(oldHead *types.Header, newHead *types.Header) error 
 			msg = "Large chain reorg detected"
 			logFn = log.Warn
 		}
+		//begin xplugeth code injection
+		pluginReorg(commonBlock, oldChain, newChain)
+		//end xplugeth code injection
 		logFn(msg, "number", commonBlock.Number, "hash", commonBlock.Hash(),
 			"drop", len(oldChain), "dropfrom", oldChain[0].Hash(), "add", len(newChain), "addfrom", newChain[0].Hash())
 		blockReorgAddMeter.Mark(int64(len(newChain)))
@@ -2311,6 +2325,11 @@ func (bc *BlockChain) reorg(oldHead *types.Header, newHead *types.Header) error 
 	if len(rebirthLogs) > 0 {
 		bc.logsFeed.Send(rebirthLogs)
 	}
+	//begin xplugeth injection
+	newBlock := bc.GetBlock(newChain[len(newChain) -1].Hash(), newChain[len(newChain) -1].Number.Uint64())
+	pluginNewSideBlock(newBlock, newBlock.Hash(), rebirthLogs)
+	//end xplugeth injection
+
 	// Delete useless indexes right now which includes the non-canonical
 	// transaction indexes, canonical chain indexes which above the head.
 	batch := bc.db.NewBatch()
@@ -2389,6 +2408,9 @@ func (bc *BlockChain) SetCanonical(head *types.Block) (common.Hash, error) {
 	if len(logs) > 0 {
 		bc.logsFeed.Send(logs)
 	}
+	//begin xplugeth code injection
+	pluginNewHead(head, head.Hash(), logs)
+	//end xplugeth code injection
 	bc.chainHeadFeed.Send(ChainHeadEvent{Header: head.Header()})
 
 	context := []interface{}{
