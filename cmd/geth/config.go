@@ -46,6 +46,12 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/naoina/toml"
 	"github.com/urfave/cli/v2"
+
+	//begin xplugeth injection
+	"github.com/openrelayxyz/xplugeth"
+	"github.com/openrelayxyz/xplugeth/types"
+	xeth "github.com/ethereum/go-ethereum/eth"
+	//end xplugeth injection
 )
 
 var (
@@ -196,6 +202,13 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 	utils.SetupMetrics(&cfg.Metrics)
 
 	backend, eth := utils.RegisterEthService(stack, &cfg.Eth)
+	//begin xplugeth injection
+	log.Info("Storing singletons")
+	if err := xplugeth.StoreSingleton[types.Backend](backend); err != nil {
+		log.Error("Error storing backend singleton", "err", err.Error())
+	}
+	xplugeth.StoreSingleton[*xeth.Ethereum](eth)
+	//end xplugeth injection
 
 	// Create gauge with geth system and build information
 	if eth != nil { // The 'eth' backend may be nil in light mode
