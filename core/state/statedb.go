@@ -1256,6 +1256,10 @@ func (s *StateDB) commit(deleteEmptyObjects bool, noStorageWiping bool) (*stateU
 	origin := s.originalRoot
 	s.originalRoot = root
 
+	//begin xplugeth code injection
+	writeToRootMap(root, deletes)
+	//end xplugeth injection
+
 	return newStateUpdate(noStorageWiping, origin, root, deletes, updates, nodes), nil
 }
 
@@ -1277,6 +1281,10 @@ func (s *StateDB) commitAndFlush(block uint64, deleteEmptyObjects bool, noStorag
 		}
 	}
 	if !ret.empty() {
+		//begin xplugeth code injection
+		pluginStateUpdate(ret.root, ret.originRoot, ret.accounts, ret.storages, ret.codes)
+		//end xplugeth injection
+		
 		// If snapshotting is enabled, update the snapshot tree with this new version
 		if snap := s.db.Snapshot(); snap != nil && snap.Snapshot(ret.originRoot) != nil {
 			start := time.Now()
