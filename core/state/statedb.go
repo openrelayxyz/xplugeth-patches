@@ -1183,6 +1183,9 @@ func (s *StateDB) Commit(block uint64, deleteEmptyObjects bool) (common.Hash, er
 	if err != nil {
 		return common.Hash{}, err
 	}
+	//begin xplugeth injection
+	codeUpdates := make(map[common.Hash][]byte)
+	//end xplugeth injection
 	// Handle all state updates afterwards
 	for addr := range s.stateObjectsDirty {
 		obj := s.stateObjects[addr]
@@ -1192,6 +1195,9 @@ func (s *StateDB) Commit(block uint64, deleteEmptyObjects bool) (common.Hash, er
 		// Write any contract code associated with the state object
 		if obj.code != nil && obj.dirtyCode {
 			rawdb.WriteCode(codeWriter, common.BytesToHash(obj.CodeHash()), obj.code)
+			//begin xplugeth injection
+			codeUpdates[common.BytesToHash(obj.CodeHash())] = obj.code
+			//end xplugeth injection
 			obj.dirtyCode = false
 		}
 		// Write any storage changes in the state object to its storage trie
@@ -1246,6 +1252,12 @@ func (s *StateDB) Commit(block uint64, deleteEmptyObjects bool) (common.Hash, er
 		s.AccountUpdated, s.AccountDeleted = 0, 0
 		s.StorageUpdated, s.StorageDeleted = 0, 0
 	}
+	// //begin xplugeth injection
+	if parent := s.originalRoot; parent != root {
+		pluginStateUpdate(root, parent, s.convertAccountSet(s.stateObjectsDestruct), s.accounts, s.storages, codeUpdates)
+	}
+	//end xplugeth injection
+
 	// If snapshotting is enabled, update the snapshot tree with this new version
 	if s.snap != nil {
 		start := time.Now()
