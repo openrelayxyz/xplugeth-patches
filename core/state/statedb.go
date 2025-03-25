@@ -1778,10 +1778,12 @@ func (s *StateDB) commitAndFlush(block uint64, deleteEmptyObjects bool) (*stateU
 		}
 	}
 	if !ret.empty() {
+		//begin xplugeth code injection
+		pluginStateUpdate(ret.root, ret.originRoot, s.snap, s.trie, ret.destructs, ret.accounts, ret.storages, ret.codes)
+		//end xplugeth code injection
 		// If snapshotting is enabled, update the snapshot tree with this new version
 		if s.snap != nil {
 			s.snap = nil
-
 			start := time.Now()
 			if err := s.snaps.Update(ret.root, ret.originRoot, ret.destructs, ret.accounts, ret.storages); err != nil {
 				log.Warn("Failed to update snapshot tree", "from", ret.originRoot, "to", ret.root, "err", err)
